@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MusicShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="container mx-auto mt-8">
+        <!-- Header -->
+        <header class="bg-white p-4 shadow-md mb-8">
+            <!-- Logo dan navigasi -->
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-semibold mb-4">
+                    <span class="uppercase text-lg sm:text-xl font-extrabold text-yellow-500">Music</span>
+                    <span class="uppercase text-lg sm:text-xl font-extrabold text-black">Shop</span>
+                </h1>
+                <nav class="space-x-4 text-gray-500">
+                    <a href="index.html">
+                        <span class="font-semibold">Home</span>
+                    </a>
+                    <a href="#">
+                        <span class="font-semibold">Products</span>
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Search Input -->
+        <div class="mt-4 mb-4">
+            <input v-model="searchQuery" @input="filterProducts" type="text" placeholder="Search products..." class="border p-2 w-full">
+        </div>
+
+        <!-- Main Content (Product List) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Product Cards -->
+            <div v-for="(product, index) in filteredProducts" :key="index" class="bg-white rounded p-4 shadow">
+                <div>
+                    <img class="mx-auto" :src="product.image" width="450" :alt="'foto ' + product.name">
+                </div>
+                <h2 class="text-lg font-semibold">{{ product.name }}</h2>
+                <p class="text-gray-600">{{ product.description }}</p>
+                <p class="mt-2 font-semibold">Price: Rp{{ product.price }}</p>
+                <p v-if="product.discount" class="mt-2 font-semibold text-green-500">Discounted Price: Rp{{ calculateDiscountedPrice(product) }}</p>
+                <button @click="addToCart(product)" class="mt-4 bg-yellow-400 hover:bg-blue-600 text-white px-4 py-2 rounded">Add to Cart</button>
+            </div>
+        </div>
+
+        <!-- Cart Summary -->
+        <div class="mt-8 bg-white rounded p-4 shadow">
+            <h2 class="text-xl font-semibold mb-4">Cart Summary</h2>
+            <div v-for="(item, index) in cartItems" :key="index" class="mb-2">
+                <p>{{ item.name }} - Rp{{ item.price }} - Quantity: {{ item.quantity }}</p>
+                <button @click="removeFromCart(index)" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Remove</button>
+                <button @click="decreaseQuantity(index)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">-</button>
+            </div>
+            <p class="font-semibold">Total Items: {{ totalItems }}</p>
+            <p class="font-semibold">Total Price: Rp{{ totalPrice }}</p>
+            <div class="cart mt-8">
+                <button @click="checkout" :disabled="isProcessing"
+                    class="relative bg-yellow-500 text-white px-4 py-2 rounded-lg">
+                    Checkout
+                    <div v-if="isProcessing"
+                        class="absolute inset-0 flex items-center justify-center bg-yellow-500 text-white opacity-80">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        <span class="ml-2">Sedang Diproses...</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.0/dist/vue.global.min.js"></script>
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    products: [
+                        { name: "Gitar Semi Elektrik", description: "Suara keras, bagus dan dijamin awet", price: 500000, image: "img/shop1.jpg", discount: 0.1 },
+                        { name: "Ukulele Elektrik", description: "Suara keras, bagus dan dijamin awet", price: 260000, image: "img/shop3.jpg" },
+                        { name: "Elektrik Set Drum", description: "Suara keras, bagus dan dijamin awet", price: 7000000, image: "img/shop4.jpg" },
+                        { name: "Cajon", description: "Suara keras, bagus dan dijamin awet", price: 800000, image: "img/shop2.jpg", discount: 0.05 },
+                        { name: "Gitar listrik", description: "Suara keras, bagus dan dijamin awet", price: 3500000, image: "img/shop5.jpg", discount: 0.15 },
+                        { name: "Viola", description: "Suara keras, bagus dan dijamin awet", price: 1200000, image: "img/shop6.jpg" },
+                    ],
+                    cartItems: [],
+                    searchQuery: '',
+                    isProcessing: false,
+                };
+            },
+            computed: {
+                totalItems() {
+                    return this.cartItems.reduce((total, item) => total + item.quantity, 0);
+                },
+                totalPrice() {
+                    return this.cartItems.reduce((total, item) => {
+                        const product = this.products.find(p => p.name === item.name);
+                        if (product) {
+                            const discountedPrice = product.discount ? (product.price - (product.price * product.discount)) : product.price;
+                            return total + (discountedPrice * item.quantity);
+                        }
+                        return total;
+                    }, 0);
+                },
+                filteredProducts() {
+                    const searchQuery = this.searchQuery.toLowerCase();
+                    return this.products.filter(product => {
+                        return product.name.toLowerCase().includes(searchQuery);
+                    });
+                },
+            },
+            methods: {
+                calculateDiscountedPrice(product) {
+                    return product.price - (product.price * product.discount);
+                },
+                addToCart(product) {
+                    let cartItem = this.cartItems.find(item => item.name === product.name);
+                    if (cartItem) {
+                        cartItem.quantity++;
+                    } else {
+                        this.cartItems.push({ name: product.name, price: product.price, quantity: 1 });
+                    }
+                },
+                removeFromCart(index) {
+                    this.cartItems.splice(index, 1);
+                },
+                decreaseQuantity(index) {
+                    if (this.cartItems[index].quantity > 1) {
+                        this.cartItems[index].quantity--;
+                    } else {
+                        this.cartItems.splice(index, 1);
+                    }
+                },
+                checkout() {
+                    // Simulate the checkout process with a 2-second delay
+                    this.isProcessing = true;
+                    setTimeout(() => {
+                        this.cartItems = [];
+                        this.isProcessing = false;
+                    }, 2000);
+                },
+                filterProducts() {
+                    // Add product filtering logic here if needed
+                },
+            },
+        });
+
+        app.mount("#app");
+    </script>
+</body>
+</html>
